@@ -1,8 +1,8 @@
-package com.solidstategroup.radar.web.panels.alport;
+package com.solidstategroup.radar.web.panels.hnf1b;
 
 import com.solidstategroup.radar.model.Demographics;
-import com.solidstategroup.radar.model.alport.Genetics;
-import com.solidstategroup.radar.service.alport.GeneticsManager;
+import com.solidstategroup.radar.model.alport.Deafness;
+import com.solidstategroup.radar.service.alport.DeafnessManager;
 import com.solidstategroup.radar.web.RadarApplication;
 import com.solidstategroup.radar.web.components.ComponentHelper;
 import com.solidstategroup.radar.web.components.RadarComponentFactory;
@@ -12,45 +12,45 @@ import org.apache.wicket.ajax.AjaxRequestTarget;
 import org.apache.wicket.ajax.markup.html.form.AjaxSubmitLink;
 import org.apache.wicket.feedback.ComponentFeedbackMessageFilter;
 import org.apache.wicket.markup.html.basic.Label;
+import org.apache.wicket.markup.html.form.DropDownChoice;
 import org.apache.wicket.markup.html.form.Form;
 import org.apache.wicket.markup.html.form.Radio;
 import org.apache.wicket.markup.html.form.RadioGroup;
-import org.apache.wicket.markup.html.form.TextArea;
-import org.apache.wicket.markup.html.form.TextField;
 import org.apache.wicket.markup.html.panel.FeedbackPanel;
 import org.apache.wicket.markup.html.panel.Panel;
 import org.apache.wicket.model.CompoundPropertyModel;
 import org.apache.wicket.model.IModel;
 import org.apache.wicket.model.Model;
+import org.apache.wicket.model.PropertyModel;
 import org.apache.wicket.spring.injection.annot.SpringBean;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class GeneticsPanel extends Panel {
+public class ProteinuriaPanel extends Panel {
 
     @SpringBean
-    private GeneticsManager geneticsManager;
+    private DeafnessManager deafnessManager;
 
-    public GeneticsPanel(final String id, final Demographics demographics) {
+    public ProteinuriaPanel(final String id, final Demographics demographics) {
         super(id);
 
         setOutputMarkupId(true);
         setOutputMarkupPlaceholderTag(true);
 
-        Genetics genetics = null;
+        Deafness deafness = null;
 
         if (demographics.hasValidId()) {
-            genetics = geneticsManager.get(demographics.getId());
+            deafness = deafnessManager.get(demographics.getId());
         }
 
-        if (genetics == null) {
-            genetics = new Genetics();
-            genetics.setRadarNo(demographics.getId());
+        if (deafness == null) {
+            deafness = new Deafness();
+            deafness.setRadarNo(demographics.getId());
         }
 
         // main model for this tab
-        IModel<Genetics> model = new Model<Genetics>(genetics);
+        IModel<Deafness> model = new Model<Deafness>(deafness);
 
         // components to update on ajax refresh
         final List<Component> componentsToUpdateList = new ArrayList<Component>();
@@ -61,23 +61,44 @@ public class GeneticsPanel extends Panel {
         formFeedback.setOutputMarkupPlaceholderTag(true);
         componentsToUpdateList.add(formFeedback);
 
-        Form<Genetics> form = new Form<Genetics>("form", new CompoundPropertyModel<Genetics>(model)) {
+        Form<Deafness> form = new Form<Deafness>("form", new CompoundPropertyModel<Deafness>(model)) {
             @Override
             protected void onSubmit() {
-                Genetics genetics = getModelObject();
+                Deafness deafness = getModelObject();
 
-                if (genetics.getTestsDone() == null) {
-                    error("Please select if a genetic test been done");
+                if (deafness.getEvidenceOfDeafness() == null) {
+                    error("Please select any evidence of deafness");
                 }
 
                 if (!hasError()) {
-                    genetics.setRadarNo(demographics.getId());
-                    geneticsManager.save(genetics);
+                    deafness.setRadarNo(demographics.getId());
+                    deafnessManager.save(deafness);
                 }
             }
         };
 
         add(form);
+
+        int maxAge = 90;
+        int minAge = 1;
+
+        // the list has to be strings so we can have the first one as N/A
+        List<String> ages = new ArrayList<String>();
+        ages.add("N/A");
+
+        for (int x = minAge; x <= maxAge; x++) {
+            ages.add(Integer.toString(x));
+        }
+
+        DropDownChoice<String> ageProblemFirstNoticedDropDown =
+                new DropDownChoice<String>("ageProblemFirstNoticed",
+                        new PropertyModel<String>(model, "ageProblemFirstNoticedAsString"), ages);
+        form.add(ageProblemFirstNoticedDropDown);
+
+        DropDownChoice<String> ageStartedUsingHearingAidDropDown =
+                new DropDownChoice<String>("ageStartedUsingHearingAid",
+                        new PropertyModel<String>(model, "ageStartedUsingHearingAidAsString"), ages);
+        form.add(ageStartedUsingHearingAidDropDown);
 
         // have to set the generic feedback panel to only pick up msgs for them form
         ComponentFeedbackMessageFilter filter = new ComponentFeedbackMessageFilter(form);
@@ -85,26 +106,21 @@ public class GeneticsPanel extends Panel {
         form.add(formFeedback);
 
         // add the patient detail bar to the tab
-        PatientDetailPanel patientDetail = new PatientDetailPanel("patientDetail", demographics, "Genetics");
+        PatientDetailPanel patientDetail = new PatientDetailPanel("patientDetail", demographics, "Deafness");
         patientDetail.setOutputMarkupId(true);
         form.add(patientDetail);
         componentsToUpdateList.add(patientDetail);
 
-        RadioGroup<Genetics.TestsDone> testsDoneRadioGroup = new RadioGroup<Genetics.TestsDone>("testsDone");
-        form.add(testsDoneRadioGroup);
+        RadioGroup<Deafness.EvidenceOfDeafness> evidenceOfDeafnessRadioGroup =
+                new RadioGroup<Deafness.EvidenceOfDeafness>("evidenceOfDeafness");
+        form.add(evidenceOfDeafnessRadioGroup);
 
-        testsDoneRadioGroup.add(new Radio<Genetics.TestsDone>("testsDoneNo",
-                new Model<Genetics.TestsDone>(Genetics.TestsDone.NO)));
-        testsDoneRadioGroup.add(new Radio<Genetics.TestsDone>("testsDoneYesInThisPatient",
-                new Model<Genetics.TestsDone>(Genetics.TestsDone.YES_IN_THIS_PATIENT)));
-        testsDoneRadioGroup.add(new Radio<Genetics.TestsDone>("testsDoneYesInAnotherFamilyMember",
-                new Model<Genetics.TestsDone>(Genetics.TestsDone.YES_IN_ANOTHER_FAMILY_MEMBER)));
-
-        form.add(new TextField<String>("labWhereTestWasDone"));
-        form.add(new TextField<String>("testDoneOn"));
-        form.add(new TextField<String>("referenceNumber"));
-        form.add(new TextArea<String>("whatResultsShowed"));
-        form.add(new TextArea<String>("keyEvidence"));
+        evidenceOfDeafnessRadioGroup.add(new Radio<Deafness.EvidenceOfDeafness>("evidenceOfDeafnessNo",
+                new Model<Deafness.EvidenceOfDeafness>(Deafness.EvidenceOfDeafness.NO)));
+        evidenceOfDeafnessRadioGroup.add(new Radio<Deafness.EvidenceOfDeafness>("evidenceOfDeafnessYesMinor",
+                new Model<Deafness.EvidenceOfDeafness>(Deafness.EvidenceOfDeafness.YES_MINOR)));
+        evidenceOfDeafnessRadioGroup.add(new Radio<Deafness.EvidenceOfDeafness>("evidenceOfDeafnessYesHearingAidNeeded",
+                new Model<Deafness.EvidenceOfDeafness>(Deafness.EvidenceOfDeafness.YES_HEARING_AID_NEEDED)));
 
         final Label successMessage = RadarComponentFactory.getSuccessMessageLabel("successMessage", form,
                 componentsToUpdateList);

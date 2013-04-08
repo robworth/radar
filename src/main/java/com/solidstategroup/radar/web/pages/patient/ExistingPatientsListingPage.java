@@ -12,6 +12,7 @@ import com.solidstategroup.radar.web.RadarSecuredSession;
 import com.solidstategroup.radar.web.dataproviders.DemographicsDataProvider;
 import com.solidstategroup.radar.web.pages.BasePage;
 import com.solidstategroup.radar.web.pages.patient.alport.AlportPatientPage;
+import com.solidstategroup.radar.web.pages.patient.hnf1b.HNF1BPatientPage;
 import com.solidstategroup.radar.web.pages.patient.srns.SrnsPatientPage;
 import org.apache.wicket.authroles.authentication.AuthenticatedWebSession;
 import org.apache.wicket.authroles.authorization.strategies.role.annotations.AuthorizeInstantiation;
@@ -60,13 +61,17 @@ public class ExistingPatientsListingPage extends BasePage {
                 // TODO: that maps disease ids to the page they need to go to so we dont need all these ifs
                 if (demographics.getDiseaseGroup() != null && demographics.getDiseaseGroup().getId().equals(
                         DiseaseGroup.SRNS_DISEASE_GROUP_ID) || demographics.getDiseaseGroup().getId().
-                                equals(DiseaseGroup.MPGN_DISEASEGROUP_ID)) {
+                        equals(DiseaseGroup.MPGN_DISEASEGROUP_ID)) {
                     item.add(new BookmarkablePageLink<SrnsPatientPage>("edit", SrnsPatientPage.class,
                             SrnsPatientPage.getParameters(demographics)));
                 } else if (demographics.getDiseaseGroup() != null && demographics.getDiseaseGroup().getId().equals(
                         DiseaseGroup.ALPORT_DISEASEGROUP_ID)) {
                     item.add(new BookmarkablePageLink<AlportPatientPage>("edit", AlportPatientPage.class,
                             AlportPatientPage.getPageParameters(demographics)));
+                } else if (demographics.getDiseaseGroup() != null && demographics.getDiseaseGroup().getId().equals(
+                        DiseaseGroup.HNF1B_DISEASEGROUP_ID)) {
+                    item.add(new BookmarkablePageLink<AlportPatientPage>("edit", HNF1BPatientPage.class,
+                            HNF1BPatientPage.getPageParameters(demographics)));
                 } else {
                     item.add(new BookmarkablePageLink<GenericPatientPage>("edit", GenericPatientPage.class,
                             GenericPatientPage.getPageParameters(demographics)));
@@ -77,15 +82,7 @@ public class ExistingPatientsListingPage extends BasePage {
                 item.add(new Label("id"));
                 item.add(new Label("diagnosis", diagnosisManager.getDiagnosisName(demographics)));
 
-                String patientNumber = "";
-
-                if (demographics.getNhsNumber() != null && demographics.getNhsNumber().length() > 0) {
-                    patientNumber = demographics.getNhsNumber();
-                } else {
-                    patientNumber = demographics.getChiNumber();
-                }
-
-                item.add(new Label("nhsNumber", patientNumber));
+                item.add(new Label("nhsNumber", demographics.getNhsNumber()));
                 item.add(new Label("hospitalNumber"));
                 item.add(DateLabel.forDatePattern("dateRegistered", RadarApplication.DATE_PATTERN2));
                 item.add(new Label("status.abbreviation"));
