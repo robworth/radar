@@ -1,13 +1,17 @@
 package com.solidstategroup.radar.test.dao;
 
+import com.solidstategroup.radar.dao.DemographicsDao;
 import com.solidstategroup.radar.dao.DiagnosisDao;
 import com.solidstategroup.radar.dao.UtilityDao;
 import com.solidstategroup.radar.model.Centre;
 import com.solidstategroup.radar.model.Consultant;
 import com.solidstategroup.radar.model.Country;
+import com.solidstategroup.radar.model.Demographics;
+import com.solidstategroup.radar.model.Diagnosis;
 import com.solidstategroup.radar.model.DiagnosisCode;
 import com.solidstategroup.radar.model.Ethnicity;
 import com.solidstategroup.radar.model.Relative;
+import com.solidstategroup.radar.model.enums.NhsNumberType;
 import com.solidstategroup.radar.model.filter.ConsultantFilter;
 import org.junit.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,15 +28,19 @@ public class UtilityDaoTest extends BaseDaoTest {
 
     @Autowired
     private UtilityDao utilityDao;
+
     @Autowired
     private DiagnosisDao diagnosisDao;
+
+    @Autowired
+    private DemographicsDao demographicDao;
 
     @Test
     public void testGetCentre() {
         Centre centre = utilityDao.getCentre(4L);
         assertNotNull("Centre is null", centre);
         assertEquals("Centre ID is wrong", new Long(4), centre.getId());
-        assertEquals("Name is wrong", "Cardiff,  Children's Hospital for Wales ", centre.getName());
+        assertEquals("Name is wrong", "Cardiff,  Children's Hospital for Wales", centre.getName());
         assertEquals("Abbreviation is wrong", "Cardiff", centre.getAbbreviation());
 
         // Check country
@@ -136,7 +144,7 @@ public class UtilityDaoTest extends BaseDaoTest {
         assertEquals("Surname is wrong", "ARNEIL", consultant.getSurname());
         assertEquals("Forename is wrong", "Professor Gavin", consultant.getForename());
         assertNotNull("Centre is null", consultant.getCentre());
-        assertEquals("Centre is wrong", "Belfast", consultant.getCentre().getAbbreviation());
+        assertEquals("Centre is wrong", "group1", consultant.getCentre().getAbbreviation());
     }
 
     @Test
@@ -165,16 +173,49 @@ public class UtilityDaoTest extends BaseDaoTest {
 
     @Test
     public void testGetPatientCountPerUnitByDiagnosisCode() throws Exception {
+        Centre centre = new Centre();
+        centre.setId(3L);
+
+        addDiagnosisForDemographic(createDemographics("Test", "User", centre), DiagnosisCode.SRNS_ID);
+        addDiagnosisForDemographic(createDemographics("Test2", "User2", centre), DiagnosisCode.MPGN_ID);
+        addDiagnosisForDemographic(createDemographics("Test3", "User3", centre), DiagnosisCode.SRNS_ID);
+        addDiagnosisForDemographic(createDemographics("Test4", "User4", centre), DiagnosisCode.MPGN_ID);
+
         DiagnosisCode diagnosisCode = diagnosisDao.getDiagnosisCode(1L);
         Map<Long, Integer> patientCountMap = utilityDao.getPatientCountPerUnitByDiagnosisCode(diagnosisCode);
-        assertTrue(patientCountMap.get(3L).equals(8));
+        assertTrue(patientCountMap.get(3L).equals(2));
     }
 
     @Test
     public void testGetPatientCountByUnit() throws Exception {
         Centre centre = new Centre();
         centre.setId(3L);
+
+        createDemographics("Test1", "User", centre);
+        createDemographics("Test2", "User", centre);
+        createDemographics("Test3", "User", centre);
+        createDemographics("Test4", "User", centre);
+
         int count = utilityDao.getPatientCountByUnit(centre);
-        assertTrue(count == 10);
+        assertEquals(4, count);
+    }
+
+    private Demographics createDemographics(String forename, String surname, Centre centre) {
+        Demographics demographics = new Demographics();
+        demographics.setForename(forename);
+        demographics.setSurname(surname);
+        demographics.setNhsNumberType(NhsNumberType.NHS_NUMBER);
+        demographics.setRenalUnit(centre);
+        demographicDao.saveDemographics(demographics);
+        assertNotNull(demographics.getId());
+        return demographics;
+    }
+
+    private void addDiagnosisForDemographic(Demographics demographics, Long diagnosisCodeId) {
+        Diagnosis diagnosis = new Diagnosis();
+        diagnosis.setText("Testing");
+        diagnosis.setDiagnosisCode(diagnosisDao.getDiagnosisCode(diagnosisCodeId));
+        diagnosis.setRadarNumber(demographics.getId());
+        diagnosisDao.saveDiagnosis(diagnosis);
     }
 }

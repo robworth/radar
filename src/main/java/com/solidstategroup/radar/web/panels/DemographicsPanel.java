@@ -7,7 +7,7 @@ import com.solidstategroup.radar.model.DiagnosisCode;
 import com.solidstategroup.radar.model.Ethnicity;
 import com.solidstategroup.radar.model.Sex;
 import com.solidstategroup.radar.model.Status;
-import com.solidstategroup.radar.model.generic.IdType;
+import com.solidstategroup.radar.model.enums.NhsNumberType;
 import com.solidstategroup.radar.model.user.ProfessionalUser;
 import com.solidstategroup.radar.model.user.User;
 import com.solidstategroup.radar.service.ClinicalDataManager;
@@ -29,12 +29,14 @@ import com.solidstategroup.radar.web.components.RadarTextFieldWithValidation;
 import com.solidstategroup.radar.web.models.RadarModelFactory;
 import com.solidstategroup.radar.web.pages.content.ConsentFormsPage;
 import com.solidstategroup.radar.web.pages.patient.srns.SrnsPatientPage;
+import org.apache.commons.lang.StringUtils;
 import org.apache.wicket.AttributeModifier;
 import org.apache.wicket.Component;
 import org.apache.wicket.ajax.AjaxRequestTarget;
 import org.apache.wicket.ajax.form.AjaxFormComponentUpdatingBehavior;
 import org.apache.wicket.ajax.markup.html.form.AjaxSubmitLink;
 import org.apache.wicket.datetime.markup.html.form.DateTextField;
+import org.apache.wicket.markup.html.WebMarkupContainer;
 import org.apache.wicket.markup.html.basic.Label;
 import org.apache.wicket.markup.html.form.CheckBox;
 import org.apache.wicket.markup.html.form.ChoiceRenderer;
@@ -110,10 +112,12 @@ public class DemographicsPanel extends Panel {
                                 // set the id type and val
                                 String idType = pageParameters.get("idType").toString();
 
-                                if (idType.equals(IdType.CHI.toString())) {
-                                    demographicsModelObject.setChiNumber(pageParameters.get("idVal").toString());
-                                } else if (idType.equals(IdType.NHS.toString())) {
-                                    demographicsModelObject.setNhsNumber(pageParameters.get("idVal").toString());
+                                demographicsModelObject.setNhsNumber(pageParameters.get("idVal").toString());
+
+                                if (idType.equals(NhsNumberType.CHI_NUMBER.toString())) {
+                                    demographicsModelObject.setNhsNumberType(NhsNumberType.CHI_NUMBER);
+                                } else if (idType.equals(NhsNumberType.NHS_NUMBER.toString())) {
+                                    demographicsModelObject.setNhsNumberType(NhsNumberType.NHS_NUMBER);
                                 }
 
                                 String diseaseGroupId = pageParameters.get("diseaseGroupId").toString();
@@ -160,6 +164,31 @@ public class DemographicsPanel extends Panel {
 
             }
         };
+
+        // More info
+        Label nhsNumber = new Label("nhsNumber");
+        WebMarkupContainer nhsNumberContainer = new WebMarkupContainer("nhsNumberContainer") {
+            @Override
+            public boolean isVisible() {
+                return model.getObject().getNhsNumberType().equals(NhsNumberType.NHS_NUMBER);
+            }
+        };
+        nhsNumberContainer.add(nhsNumber);
+
+        Label chiNumber = new Label("chiNumber");
+        WebMarkupContainer chiNumberContainer = new WebMarkupContainer("chiNumberContainer") {
+            @Override
+            public boolean isVisible() {
+                return model.getObject().getNhsNumberType().equals(NhsNumberType.CHI_NUMBER);
+            }
+        };
+        chiNumberContainer.add(chiNumber);
+
+        form.add(nhsNumberContainer, chiNumberContainer);
+
+        form.setOutputMarkupId(true);
+        form.setOutputMarkupPlaceholderTag(true);
+        
         add(form);
 
         final List<Component> componentsToUpdateList = new ArrayList<Component>();
@@ -208,11 +237,11 @@ public class DemographicsPanel extends Panel {
             }
 
             diagnosis.setModel(new Model(diagnosisCode));
-
         }
 
-
-        // Basic fields
+        /**
+         * Basic fields
+         */
         RadarRequiredTextField surname = new RadarRequiredTextField("surname", form, componentsToUpdateList);
         RadarRequiredTextField forename = new RadarRequiredTextField("forename", form, componentsToUpdateList);
         RadarRequiredDateTextField dateOfBirth = new RadarRequiredDateTextField("dateOfBirth", form,
@@ -221,6 +250,153 @@ public class DemographicsPanel extends Panel {
         dateOfBirth.setRequired(true);
 
         form.add(diagnosis, surname, forename, dateOfBirth);
+
+        /**
+         *  Add basic fields for header too... apparently we can't render same component twice in wicket!..
+         *
+         *  As we cant set demographicsModelObject as final outside isVisible() implementations there's a bunch of
+         *      code duplication
+         */
+
+        // forename
+        Label nameLabel = new Label("nameLabel", "Name") {
+            @Override
+            public boolean isVisible() {
+                Demographics demographicsModelObject = null;
+                if (radarNumberModel.getObject() != null) {
+                    Long radarNumber;
+                    try {
+                        radarNumber = radarNumberModel.getObject();
+                    } catch (ClassCastException e) {
+                        Object obj = radarNumberModel.getObject();
+                        radarNumber = Long.parseLong((String) obj);
+                    }
+                    demographicsModelObject = demographicsManager.getDemographicsByRadarNumber(radarNumber);
+                }
+
+                if (demographicsModelObject == null) {
+                    demographicsModelObject = new Demographics();
+                }
+
+                return StringUtils.isNotBlank(demographicsModelObject.getForename());
+            }
+        };
+        nameLabel.setOutputMarkupId(true);
+        nameLabel.setOutputMarkupPlaceholderTag(true);
+        form.add(nameLabel);
+
+        TextField forenameForHeader = new TextField("forenameForHeader", RadarModelFactory.getFirstNameModel(
+                radarNumberModel, demographicsManager)) {
+            @Override
+            public boolean isVisible() {
+                Demographics demographicsModelObject = null;
+                if (radarNumberModel.getObject() != null) {
+                    Long radarNumber;
+                    try {
+                        radarNumber = radarNumberModel.getObject();
+                    } catch (ClassCastException e) {
+                        Object obj = radarNumberModel.getObject();
+                        radarNumber = Long.parseLong((String) obj);
+                    }
+                    demographicsModelObject = demographicsManager.getDemographicsByRadarNumber(radarNumber);
+                }
+
+                if (demographicsModelObject == null) {
+                    demographicsModelObject = new Demographics();
+                }
+
+                return StringUtils.isNotBlank(demographicsModelObject.getForename());
+            }
+        };
+        forenameForHeader.setOutputMarkupId(true);
+        forenameForHeader.setOutputMarkupPlaceholderTag(true);
+        componentsToUpdateList.add(forenameForHeader);
+
+
+        // surname
+        TextField surnameForHeader = new TextField("surnameForHeader", RadarModelFactory.getSurnameModel(
+                radarNumberModel, demographicsManager)) {
+            @Override
+            public boolean isVisible() {
+                Demographics demographicsModelObject = null;
+                if (radarNumberModel.getObject() != null) {
+                    Long radarNumber;
+                    try {
+                        radarNumber = radarNumberModel.getObject();
+                    } catch (ClassCastException e) {
+                        Object obj = radarNumberModel.getObject();
+                        radarNumber = Long.parseLong((String) obj);
+                    }
+                    demographicsModelObject = demographicsManager.getDemographicsByRadarNumber(radarNumber);
+                }
+
+                if (demographicsModelObject == null) {
+                    demographicsModelObject = new Demographics();
+                }
+
+                return StringUtils.isNotBlank(demographicsModelObject.getSurname());
+            }
+        };
+        surnameForHeader.setOutputMarkupId(true);
+        surnameForHeader.setOutputMarkupPlaceholderTag(true);
+        componentsToUpdateList.add(surnameForHeader);
+
+        // date of birth
+        Label dobLabel = new Label("dobLabel", "DoB") {
+            @Override
+            public boolean isVisible() {
+                Demographics demographicsModelObject = null;
+                if (radarNumberModel.getObject() != null) {
+                    Long radarNumber;
+                    try {
+                        radarNumber = radarNumberModel.getObject();
+                    } catch (ClassCastException e) {
+                        Object obj = radarNumberModel.getObject();
+                        radarNumber = Long.parseLong((String) obj);
+                    }
+                    demographicsModelObject = demographicsManager.getDemographicsByRadarNumber(radarNumber);
+                }
+
+                if (demographicsModelObject == null) {
+                    demographicsModelObject = new Demographics();
+                }
+
+                return demographicsModelObject.getDateOfBirth() != null;
+            }
+        };
+        dobLabel.setOutputMarkupId(true);
+        dobLabel.setOutputMarkupPlaceholderTag(true);
+        form.add(dobLabel);
+
+        TextField dateOfBirthForHeader = new org.apache.wicket.extensions.markup.html.form.DateTextField(
+                "dateOfBirthForHeader",
+                RadarModelFactory.getDobModel(radarNumberModel, demographicsManager), RadarApplication.DATE_PATTERN) {
+            @Override
+            public boolean isVisible() {
+                Demographics demographicsModelObject = null;
+                if (radarNumberModel.getObject() != null) {
+                    Long radarNumber;
+                    try {
+                        radarNumber = radarNumberModel.getObject();
+                    } catch (ClassCastException e) {
+                        Object obj = radarNumberModel.getObject();
+                        radarNumber = Long.parseLong((String) obj);
+                    }
+                    demographicsModelObject = demographicsManager.getDemographicsByRadarNumber(radarNumber);
+                }
+
+                if (demographicsModelObject == null) {
+                    demographicsModelObject = new Demographics();
+                }
+
+                return demographicsModelObject.getDateOfBirth() != null;
+            }
+        };
+        dateOfBirthForHeader.setOutputMarkupId(true);
+        dateOfBirthForHeader.setOutputMarkupPlaceholderTag(true);
+        componentsToUpdateList.add(dateOfBirthForHeader);
+
+        form.add(diagnosis, surnameForHeader, forenameForHeader, dateOfBirthForHeader);
 
         // Sex
         RadarRequiredDropdownChoice sex =
@@ -250,11 +426,9 @@ public class DemographicsPanel extends Panel {
         // More info
         RadarRequiredTextField hospitalNumber =
                 new RadarRequiredTextField("hospitalNumber", form, componentsToUpdateList);
-        TextField nhsNumber = new TextField("nhsNumber");
         TextField renalRegistryNumber = new TextField("renalRegistryNumber");
         TextField ukTransplantNumber = new TextField("ukTransplantNumber");
-        TextField chiNumber = new TextField("chiNumber");
-        form.add(hospitalNumber, nhsNumber, renalRegistryNumber, ukTransplantNumber, chiNumber);
+        form.add(hospitalNumber, renalRegistryNumber, ukTransplantNumber);
 
         // Status, consultants and centres drop down boxes
         form.add(new DropDownChoice<Status>("status", demographicsManager.getStatuses(),
@@ -281,7 +455,7 @@ public class DemographicsPanel extends Panel {
                     Demographics demographics = model.getObject();
                     if (demographics != null) {
                         centreNumber.setObject(demographics.getRenalUnit() != null ?
-                                demographics.getRenalUnit().getId():
+                                demographics.getRenalUnit().getId() :
                                 null);
                     }
 

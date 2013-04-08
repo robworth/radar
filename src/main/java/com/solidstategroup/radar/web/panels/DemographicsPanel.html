@@ -11,8 +11,8 @@
         <td style="height:30px;">
             <span style="font-weight:bold;">Demographics</span>
             <span wicket:id="addNewPatientLabel">Add a New Patient</span></td>
-        <td style="text-align:right; padding-right:10px;"><b>RADAR Number</b></td>
-        <td style="width:150px;">
+        <td style="text-align:right; padding-right:10px; width: 120px"><b>RaDaR Number</b></td>
+        <td style="width:200px;">
             <input wicket:id="radarNumber" type="text" readonly="readonly"
                    style="background-color:#EEF6ED;font-style:italic;"/></td>
     </tr>
@@ -26,6 +26,12 @@
                 <option value="1">SRNS</option>
             </select>
             <span wicket:id="diagnosisFeedbackIndicator"></span>
+            <br/><br/>
+            &nbsp;<span wicket:id="nameLabel">Name</span>
+            <input wicket:id="forenameForHeader" type="text" style="width:100px;background-color:#EEF6ED;font-style:italic;" readonly="readonly">&nbsp;
+            <input wicket:id="surnameForHeader" type="text" style="width:100px;background-color:#EEF6ED;font-style:italic;" readonly="readonly">
+            <span wicket:id="dobLabel">DoB</span>
+            <input wicket:id="dateOfBirthForHeader" type="text" style="width:100px;background-color:#EEF6ED;font-style:italic;" readonly="readonly">
         </td>
         <td style="text-align:right; padding-right:10px;">Date Registered</td>
         <td><input wicket:id="dateRegistered" type="text" readonly="readonly"
@@ -159,10 +165,16 @@
                         <span wicket:id="hospitalNumberFeedbackIndicator"></span>
                     </td>
                 </tr>
-                <tr>
-                    <td><span id="ctl00_ContentPlaceHolder1_lblNHS">NHS Number</span></td>
+                <tr wicket:id="nhsNumberContainer">
+                    <td><span>NHS Number</span></td>
                     <td>
-                        <input type="text" wicket:id="nhsNumber" style="width:80px;"/>
+                        <label wicket:id="nhsNumber" style="width:80px;"/>
+                    </td>
+                </tr>
+                <tr wicket:id="chiNumberContainer">
+                    <td><span>CHI No. (Scotland Only)</span></td>
+                    <td>
+                        <label wicket:id="chiNumber"/>
                     </td>
                 </tr>
                 <tr>
@@ -175,12 +187,6 @@
                     <td><span id="ctl00_ContentPlaceHolder1_lblUKT">UK Transplant Number</span></td>
                     <td>
                         <input type="text" wicket:id="ukTransplantNumber" style="width:80px;"/>
-                    </td>
-                </tr>
-                <tr>
-                    <td><span id="ctl00_ContentPlaceHolder1_lblCHI">CHI No. (Scotland Only)</span></td>
-                    <td>
-                        <input type="text" wicket:id="chiNumber" style="width:80px;"/>
                     </td>
                 </tr>
                 <tr>

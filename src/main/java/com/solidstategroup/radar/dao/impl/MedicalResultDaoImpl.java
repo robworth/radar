@@ -33,7 +33,7 @@ public class MedicalResultDaoImpl extends BaseDaoImpl implements MedicalResultDa
         // Initialise a simple JDBC insert to be able to get the allocated ID
         medicalResultInsert = new SimpleJdbcInsert(dataSource).withTableName("testresult")
                 .usingGeneratedKeyColumns("id")
-                .usingColumns("RADAR_NO", "unitcode", "testcode", "datestamp", "prepost", "value"
+                .usingColumns("RADAR_NO", "unitcode", "testcode", "datestamp", "prepost", "value", "nhsNo"
                 );
     }
 
@@ -53,6 +53,7 @@ public class MedicalResultDaoImpl extends BaseDaoImpl implements MedicalResultDa
             map.put("testcode", item.getTestcode());
             map.put("value", item.getObjectValue());
             map.put("datestamp", item.getDate());
+            map.put("nhsNo", medicalResult.getNhsNo());
             medicalResultsMaps[i] = map;
         }
 
@@ -279,6 +280,15 @@ public class MedicalResultDaoImpl extends BaseDaoImpl implements MedicalResultDa
         }
 
         public String getTestcode() {
+
+            // All the results must be written to the testresult table so testresult.testcode matches the
+            // result_heading.headingcode, thus all should be lowercase.
+            // ACR, PCR, BPsys and BPdia should be acr, pcr, bpsys and bpdia
+
+            if (testcode != null && testcode.length() > 0) {
+                testcode = testcode.toLowerCase();
+            }
+
             return testcode;
         }
 
