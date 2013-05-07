@@ -4,7 +4,6 @@ import com.solidstategroup.radar.model.user.PatientUser;
 import com.solidstategroup.radar.model.user.ProfessionalUser;
 import com.solidstategroup.radar.model.user.User;
 import com.solidstategroup.radar.service.EmailManager;
-import com.solidstategroup.radar.util.TripleDes;
 import com.solidstategroup.radar.web.RadarApplication;
 import org.apache.velocity.VelocityContext;
 import org.apache.velocity.app.VelocityEngine;
@@ -15,7 +14,6 @@ import org.springframework.mail.javamail.MimeMessageHelper;
 
 import javax.mail.Address;
 import javax.mail.Message;
-import javax.mail.MessagingException;
 import javax.mail.internet.InternetAddress;
 import javax.mail.internet.MimeMessage;
 import java.io.StringWriter;
@@ -63,7 +61,7 @@ public class EmailManagerImpl implements EmailManager {
     public void sendPatientRegistrationReminderEmail(PatientUser patientUser) throws Exception {       
         Map<String, Object> map = new HashMap<String, Object>();
         map.put("patientUser", patientUser);
-        map.put("password", TripleDes.decrypt(patientUser.getPasswordHash()));
+        map.put("password", patientUser.getPassword());
         String emailBody = renderTemplate(map, "patient-registration-reminder.vm");
         if (!debug) {
             sendEmail(emailAddressApplication, new String[]{patientUser.getUsername()},
@@ -127,7 +125,7 @@ public class EmailManagerImpl implements EmailManager {
             messageHelper.setText(body, true);
 
             javaMailSender.send(messageHelper.getMimeMessage());
-        } catch (MessagingException e) {
+        } catch (Exception e) {
             LOGGER.error("Could send email", e);
         }
     }

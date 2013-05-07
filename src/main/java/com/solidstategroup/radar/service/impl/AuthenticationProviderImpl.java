@@ -22,9 +22,10 @@ public class AuthenticationProviderImpl implements AuthenticationProvider {
         List<User> users = new ArrayList<User>();
         // Get the user by their email, try admin, then professional, then patient - this is fine in terms of security
         // as the login pages have an extra check to see the user name exists for the the user type
-        users.add(userManager.getAdminUser(authentication.getName()));
-        users.add(userManager.getProfessionalUser(authentication.getName()));
-        users.add(userManager.getPatientUser(authentication.getName()));
+        users.add(userManager.getSuperUserWithUsername(authentication.getName()));
+        users.add(userManager.getAdminUserWithUsername(authentication.getName()));
+        users.add(userManager.getProfessionalUserWithUsername(authentication.getName()));
+        users.add(userManager.getPatientUserWithUsername(authentication.getName()));
 
         for (User user : users) {
             // If we've found a user...
@@ -33,8 +34,8 @@ public class AuthenticationProviderImpl implements AuthenticationProvider {
                 try {
                     // Didn't want to store plain text password in memory, even tho probably safe
                     // Instead password hash is set on user from DAO, then we compare the two hashes
-                    byte[] passwordHash = User.getPasswordHash((String) authentication.getCredentials());
-                    if (Arrays.equals(user.getPasswordHash(), passwordHash)) {
+                    String passwordHash = User.getPasswordHash((String) authentication.getCredentials());
+                    if (user.getPassword().equals(passwordHash)) {
                         // Authenticated
                         List<GrantedAuthorityImpl> authorities =
                                 Arrays.asList(new GrantedAuthorityImpl(user.getSecurityRole()));

@@ -8,13 +8,13 @@ import com.solidstategroup.radar.model.Ethnicity;
 import com.solidstategroup.radar.model.Sex;
 import com.solidstategroup.radar.model.Status;
 import com.solidstategroup.radar.model.enums.NhsNumberType;
-import com.solidstategroup.radar.model.user.ProfessionalUser;
 import com.solidstategroup.radar.model.user.User;
 import com.solidstategroup.radar.service.ClinicalDataManager;
 import com.solidstategroup.radar.service.DemographicsManager;
 import com.solidstategroup.radar.service.DiagnosisManager;
 import com.solidstategroup.radar.service.LabDataManager;
 import com.solidstategroup.radar.service.TherapyManager;
+import com.solidstategroup.radar.service.UserManager;
 import com.solidstategroup.radar.service.UtilityManager;
 import com.solidstategroup.radar.service.generic.DiseaseGroupManager;
 import com.solidstategroup.radar.web.RadarApplication;
@@ -54,6 +54,8 @@ import org.apache.wicket.request.mapper.parameter.PageParameters;
 import org.apache.wicket.spring.injection.annot.SpringBean;
 import org.apache.wicket.util.string.StringValue;
 import org.apache.wicket.validation.validator.PatternValidator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -76,6 +78,11 @@ public class DemographicsPanel extends Panel {
     @SpringBean
     private UtilityManager utilityManager;
 
+    @SpringBean
+    private UserManager userManager;
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(DemographicsPanel.class);
+
     public DemographicsPanel(String id, final IModel<Long> radarNumberModel) {
         this(id, radarNumberModel, null);
     }
@@ -85,7 +92,7 @@ public class DemographicsPanel extends Panel {
         setOutputMarkupId(true);
         setOutputMarkupPlaceholderTag(true);
 
-        ProfessionalUser user = (ProfessionalUser) RadarSecuredSession.get().getUser();
+        User user = RadarSecuredSession.get().getUser();
 
         // Set up model - if given radar number loadable detachable getting demographics by radar number
         final CompoundPropertyModel<Demographics> model = new CompoundPropertyModel<Demographics>(
@@ -150,6 +157,13 @@ public class DemographicsPanel extends Panel {
                     demographics.setId(radarNumberModel.getObject());
                 }
                 demographicsManager.saveDemographics(demographics);
+                try {
+                    userManager.registerPatient(demographics);
+                } catch (Exception e) {
+                    String message = "Error registering new patient to accompany this demographic";
+                    LOGGER.error("{}, message {}", message, e.getMessage());
+                    error(message);
+                }
                 radarNumberModel.setObject(demographics.getId());
 
                 // create new diagnosis if it doesnt exist becuase diagnosis code is set in demographics tab
@@ -188,7 +202,7 @@ public class DemographicsPanel extends Panel {
 
         form.setOutputMarkupId(true);
         form.setOutputMarkupPlaceholderTag(true);
-        
+
         add(form);
 
         final List<Component> componentsToUpdateList = new ArrayList<Component>();

@@ -1,5 +1,6 @@
 package com.solidstategroup.radar.service;
 
+import com.solidstategroup.radar.model.Demographics;
 import com.solidstategroup.radar.model.exception.DaoException;
 import com.solidstategroup.radar.model.exception.DecryptionException;
 import com.solidstategroup.radar.model.exception.EmailAddressNotFoundException;
@@ -10,6 +11,7 @@ import com.solidstategroup.radar.model.filter.ProfessionalUserFilter;
 import com.solidstategroup.radar.model.user.AdminUser;
 import com.solidstategroup.radar.model.user.PatientUser;
 import com.solidstategroup.radar.model.user.ProfessionalUser;
+import com.solidstategroup.radar.model.user.User;
 import org.springframework.security.core.AuthenticationException;
 
 import java.util.Date;
@@ -19,11 +21,17 @@ public interface UserManager {
 
     AdminUser getAdminUser(String email);
 
+    AdminUser getAdminUserWithUsername(String username);
+
     PatientUser getPatientUser(Long id);
 
     PatientUser getPatientUser(String email);
 
+    PatientUser getPatientUserWithUsername(String username);
+
     PatientUser getPatientUser(String email, Date dateOfBirth);
+
+    PatientUser getPatientUserWithUsername(String username, Date dateOfBirth);
 
     List<PatientUser> getPatientUsers();
 
@@ -35,7 +43,7 @@ public interface UserManager {
 
     void deletePatientUser(PatientUser patientUser) throws Exception;
 
-    void registerPatient(PatientUser patientUser) throws RegistrationException, UserEmailAlreadyExists;
+    void registerPatient(Demographics demographics) throws Exception;
 
     void registerProfessional(ProfessionalUser professionalUser) throws UserEmailAlreadyExists,
             RegistrationException;
@@ -43,6 +51,10 @@ public interface UserManager {
     ProfessionalUser getProfessionalUser(Long id);
 
     ProfessionalUser getProfessionalUser(String email);
+
+    ProfessionalUser getProfessionalUserWithUsername(String username);
+
+    User getSuperUserWithUsername(String username);
 
     void saveProfessionalUser(ProfessionalUser professionalUser) throws Exception;
 
@@ -67,4 +79,5 @@ public interface UserManager {
 
     void changeUserPassword(String username, String password) throws DecryptionException, DaoException;
 
+    boolean userExistsInPatientView(String nhsno);
 }

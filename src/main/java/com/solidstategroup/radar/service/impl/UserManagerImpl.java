@@ -16,9 +16,7 @@ import com.solidstategroup.radar.model.user.ProfessionalUser;
 import com.solidstategroup.radar.model.user.User;
 import com.solidstategroup.radar.service.EmailManager;
 import com.solidstategroup.radar.service.UserManager;
-import com.solidstategroup.radar.util.TripleDes;
 import org.apache.commons.lang.RandomStringUtils;
-import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataAccessException;
@@ -47,6 +45,10 @@ public class UserManagerImpl implements UserManager, UserDetailsService {
         return userDao.getAdminUser(email);
     }
 
+    public AdminUser getAdminUserWithUsername(String username) {
+        return userDao.getAdminUserWithUsername(username);
+    }
+
     public PatientUser getPatientUser(Long id) {
         return userDao.getPatientUser(id);
     }
@@ -55,8 +57,20 @@ public class UserManagerImpl implements UserManager, UserDetailsService {
         return userDao.getPatientUser(email);
     }
 
+    public PatientUser getPatientUserWithUsername(String username) {
+        return userDao.getPatientUserWithUsername(username);
+    }
+
     public PatientUser getPatientUser(String email, Date dateOfBirth) {
         PatientUser user = userDao.getPatientUser(email);
+        if (user != null) {
+            return user.getDateOfBirth().equals(dateOfBirth) ? user : null;
+        }
+        return null;
+    }
+
+    public PatientUser getPatientUserWithUsername(String username, Date dateOfBirth) {
+        PatientUser user = userDao.getPatientUserWithUsername(username);
         if (user != null) {
             return user.getDateOfBirth().equals(dateOfBirth) ? user : null;
         }
@@ -76,10 +90,6 @@ public class UserManagerImpl implements UserManager, UserDetailsService {
     }
 
     public void savePatientUser(PatientUser patientUser) throws Exception {
-        // if the password prop set then encrypt it
-        if (patientUser.getPassword() != null && patientUser.getPassword().length() > 0) {
-            patientUser.setPasswordHash(PatientUser.getPasswordHash(patientUser.getPassword()));
-        }
 
         userDao.savePatientUser(patientUser);
     }
@@ -88,52 +98,38 @@ public class UserManagerImpl implements UserManager, UserDetailsService {
         userDao.deletePatientUser(patientUser);
     }
 
-    public void registerPatient(PatientUser patientUser) throws RegistrationException, UserEmailAlreadyExists {
+    public void registerPatient(Demographics demographics) throws Exception {
         // Check we have a valid radar number, email address and date of birth
-        if (patientUser == null ||
-                patientUser.getRadarNumber() <= 0L ||
-                StringUtils.isBlank(patientUser.getUsername()) ||
-                patientUser.getDateOfBirth() == null) {
-            throw new IllegalArgumentException("Must supply a non null patient user " +
-                    "with valid radar number, username and date of birth for registration");
+        if (demographics == null || demographics.getId() < 1) {
+            throw new IllegalArgumentException("Invalid demographics supplied to registerPatient");
         }
 
-        PatientUser dupliatePatientUser = getPatientUser(patientUser.getUsername());
-        if (dupliatePatientUser != null) {
-            throw new UserEmailAlreadyExists("User email already exists");
+        if (demographics.getDateOfBirth() == null) {
+            throw new IllegalArgumentException("Missing required parameter to registerPatient: " +
+                    "demographics.getDateOfBirth()");
         }
 
-        // First we need to try and get a demographics user with the supplied radar number
-        Demographics demographics = demographicsDao.getDemographicsByRadarNumber(patientUser.getRadarNumber());
+        if (demographics.getNhsNumber() == null) {
+            throw new IllegalArgumentException("Missing required parameter to registerPatient: " +
+                    "demographics.getNhsNumber()");
+        }
 
-        // If we get a demographic check the date of birth matches
-        if (demographics != null && demographics.getDateOfBirth() != null
-                && demographics.getDateOfBirth().equals(patientUser.getDateOfBirth())) {
+        PatientUser patientUser = userDao.getExternallyCreatedPatientUser(demographics.getNhsNumber());
 
-            // Generate the password - 8 random characters
-            String password = generateRandomPassword();
-            try {
-                patientUser.setPasswordHash(User.getPasswordHash(password));
+        if (patientUser == null) {
+            throw new IllegalStateException("Cannot register patient. No externally created user found for nhsno "
+                    + demographics.getNhsNumber());
+        }
 
-                // Save the patient user to the patient user table
-                userDao.savePatientUser(patientUser);
+        // if this demographic is already an existing patient, just skip the registration
+       if (userDao.getPatientUser(patientUser.getUserId()) == null) {
 
-                // Send the registration email to the user
-                emailManager.sendPatientRegistrationEmail(patientUser, password);
+            // now fill in the radar patient stuff
+            patientUser.setRadarNumber(demographics.getId());
+            patientUser.setDateOfBirth(demographics.getDateOfBirth());
 
-                // Send the registration email to the admin
-                emailManager.sendPatientRegistrationAdminNotificationEmail(patientUser);
-
-            } catch (Exception e) {
-                // If we get an exception getting password hash then log and throw an exception
-                LOGGER.error("Could not get password hash when registering user {}", patientUser.getUsername(), e);
-                throw new RegistrationException("Could not register patient - exception generating password", e);
-            }
-
-        } else {
-            // If there wasn't a demographic record for that radar number, or the date of birth didn't match
-            throw new RegistrationException("Could not register patient - " +
-                    "date of birth incorrect for given radar number");
+            // Update the user record created by patient view and create radar patient row and user mapping row
+            userDao.savePatientUser(patientUser);
         }
     }
 
@@ -161,12 +157,20 @@ public class UserManagerImpl implements UserManager, UserDetailsService {
         return userDao.getProfessionalUser(email);
     }
 
+    public ProfessionalUser getProfessionalUserWithUsername(String username) {
+        return userDao.getProfessionalUserWithUsername(username);
+    }
+
+    public User getSuperUserWithUsername(String username) {
+        return userDao.getSuperUserWithUsername(username);
+    }
+
     public void saveProfessionalUser(ProfessionalUser professionalUser) throws Exception {
         // if its a new user generate a password
         if (!professionalUser.hasValidId()) {
             String password = generateRandomPassword();
-            professionalUser.setPasswordHash(ProfessionalUser.getPasswordHash(password));
-            professionalUser.setUsernameHash(ProfessionalUser.getUsernameHash(professionalUser.getEmail()));
+            professionalUser.setPassword(ProfessionalUser.getPasswordHash(password));
+            professionalUser.setUsername(professionalUser.getEmail());
         }
 
         userDao.saveProfessionalUser(professionalUser);
@@ -205,13 +209,7 @@ public class UserManagerImpl implements UserManager, UserDetailsService {
 
     public void changeUserPassword(String username, String password) throws DecryptionException, DaoException {
         ProfessionalUser professionalUser = getProfessionalUser(username);
-        try {
-            professionalUser.setPasswordHash(User.getPasswordHash(password));
 
-        } catch (Exception e) {
-            LOGGER.error("could not get password hash for password", e);
-            throw new DecryptionException("could not get password hash for password");
-        }
         try {
             userDao.saveProfessionalUser(professionalUser);
         } catch (Exception e) {
@@ -220,13 +218,21 @@ public class UserManagerImpl implements UserManager, UserDetailsService {
         }
     }
 
+    public boolean userExistsInPatientView(String nhsno) {
+        return userDao.userExistsInPatientView(nhsno);
+    }
+
     public void sendForgottenPasswordToPatient(String username) throws EmailAddressNotFoundException,
             DecryptionException {
         // In theory this could just go in the email manager but we need to query for user first
         PatientUser patientUser = userDao.getPatientUser(username);
         if (patientUser != null) {
             try {
-                String password = TripleDes.decrypt(patientUser.getPasswordHash());
+                String password = generateRandomPassword();
+                patientUser.setPassword(ProfessionalUser.getPasswordHash(password));
+
+                userDao.savePatientUser(patientUser);
+
                 emailManager.sendForgottenPassword(patientUser, password);
             } catch (Exception e) {
                 LOGGER.error("Could not decrypt password for forgotten password email for {}", username, e);
@@ -244,8 +250,11 @@ public class UserManagerImpl implements UserManager, UserDetailsService {
         ProfessionalUser professionalUser = userDao.getProfessionalUser(username);
         if (professionalUser != null) {
             try {
-                String password = TripleDes.decrypt(professionalUser.getPasswordHash());
-                professionalUser.setUsername(TripleDes.decrypt(professionalUser.getUsernameHash()));
+                String password = generateRandomPassword();
+                professionalUser.setPassword(ProfessionalUser.getPasswordHash(password));
+
+                userDao.saveProfessionalUser(professionalUser);
+
                 emailManager.sendForgottenPassword(professionalUser, password);
             } catch (Exception e) {
                 LOGGER.error("Could not decrypt");
