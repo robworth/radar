@@ -3,11 +3,14 @@ package com.solidstategroup.radar.web.pages.patient;
 import com.solidstategroup.radar.dao.generic.DiseaseGroupDao;
 import com.solidstategroup.radar.model.Sex;
 import com.solidstategroup.radar.model.enums.NhsNumberType;
+import com.solidstategroup.radar.model.filter.DemographicsFilter;
 import com.solidstategroup.radar.model.generic.AddPatientModel;
 import com.solidstategroup.radar.model.generic.DiseaseGroup;
 import com.solidstategroup.radar.model.user.ProfessionalUser;
 import com.solidstategroup.radar.model.user.User;
 import com.solidstategroup.radar.service.DemographicsManager;
+import com.solidstategroup.radar.service.UserManager;
+import com.solidstategroup.radar.service.UtilityManager;
 import com.solidstategroup.radar.web.RadarApplication;
 import com.solidstategroup.radar.web.RadarSecuredSession;
 import com.solidstategroup.radar.web.components.ComponentHelper;
@@ -23,9 +26,11 @@ import org.apache.wicket.ajax.markup.html.form.AjaxSubmitLink;
 import org.apache.wicket.authroles.authorization.strategies.role.annotations.AuthorizeInstantiation;
 import org.apache.wicket.feedback.FeedbackMessage;
 import org.apache.wicket.feedback.IFeedbackMessageFilter;
+import org.apache.wicket.markup.html.WebMarkupContainer;
 import org.apache.wicket.markup.html.basic.Label;
 import org.apache.wicket.markup.html.form.ChoiceRenderer;
 import org.apache.wicket.markup.html.form.Form;
+import org.apache.wicket.markup.html.link.ExternalLink;
 import org.apache.wicket.markup.html.panel.FeedbackPanel;
 import org.apache.wicket.model.CompoundPropertyModel;
 import org.apache.wicket.spring.injection.annot.SpringBean;
@@ -39,7 +44,7 @@ import java.util.List;
  */
 @AuthorizeInstantiation({User.ROLE_PROFESSIONAL, User.ROLE_SUPER_USER})
 public class AddPatientPage extends BasePage {
-    public static final String NHS_NUMBER_INVALID_MSG = "NHS number is not valid";
+    public static final String NHS_NUMBER_INVALID_MSG = "NHS or CHI number is not valid";
 
     @SpringBean
     private DiseaseGroupDao diseaseGroupDao;
@@ -47,11 +52,23 @@ public class AddPatientPage extends BasePage {
     @SpringBean
     private DemographicsManager demographicsManager;
 
+    @SpringBean
+    private UserManager userManager;
+
+    @SpringBean
+    private UtilityManager utilityManager;
+
     public AddPatientPage() {
         ProfessionalUser user = (ProfessionalUser) RadarSecuredSession.get().getUser();
 
         // list of items to update in ajax submits
         final List<Component> componentsToUpdateList = new ArrayList<Component>();
+        final WebMarkupContainer pvMessageContainer = new WebMarkupContainer("pvMessageContainer");
+        pvMessageContainer.setOutputMarkupPlaceholderTag(true);
+        pvMessageContainer.setVisible(false);
+        pvMessageContainer.add(
+                new ExternalLink("patientViewLink",
+                        utilityManager.getPatientViewSiteUrl(), utilityManager.getPatientViewSiteUrl()));
 
         CompoundPropertyModel<AddPatientModel> addPatientModel =
                 new CompoundPropertyModel<AddPatientModel>(new AddPatientModel());
@@ -63,9 +80,26 @@ public class AddPatientPage extends BasePage {
             protected void onSubmit() {
                 AddPatientModel model = getModelObject();
 
+                // just show the user one error at a time
+
+                DemographicsFilter demographicsFilter = new DemographicsFilter();
+                demographicsFilter.addSearchCriteria(DemographicsFilter.UserField.NHS_NO.toString(),
+                        model.getPatientId());
+
                 // check nhs number is valid
                 if (!demographicsManager.isNhsNumberValid(model.getPatientId())) {
                     error(NHS_NUMBER_INVALID_MSG);
+
+                } else if (demographicsManager.getDemographics(demographicsFilter).size() > 0) {
+                    // check that this nhsno does not already exist in the radar system
+                    error("A patient with this NHS or CHI number already exists");
+
+                } else if (!userManager.userExistsInPatientView(model.getPatientId())) {
+                    // If nhsno is not already in patient view inform user they need to add the patient using the
+                    // patient view application.
+                    pvMessageContainer.setVisible(true);
+                    error("All patients must have a PatientView user. That NHS number is not currently in " +
+                            "PatientView hence you will need to to go to PatientView to add it.");
                 }
 
                 // TODO: this is terrible as we need to check disease groups to know where to send it - well done abul
@@ -128,15 +162,16 @@ public class AddPatientPage extends BasePage {
         final FeedbackPanel feedbackPanel = new FeedbackPanel("feedback", new IFeedbackMessageFilter() {
             public boolean accept(FeedbackMessage feedbackMessage) {
                 String message = feedbackMessage.getMessage().toString();
-                return message.contains(NHS_NUMBER_INVALID_MSG);
+                return message != null && message.length() > 0;
             }
         });
 
         feedbackPanel.setOutputMarkupPlaceholderTag(true);
         componentsToUpdateList.add(feedbackPanel);
+        componentsToUpdateList.add(pvMessageContainer);
 
-        // add the components to hierachy
-        form.add(id, idType, diseaseGroup, submit, feedbackPanel);
+        // add the components
+        form.add(id, idType, diseaseGroup, submit, feedbackPanel, pvMessageContainer);
         add(form, pageNumber);
     }
 }
