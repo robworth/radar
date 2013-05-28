@@ -375,8 +375,13 @@ public class DemographicsDaoImpl extends BaseDaoImpl implements DemographicsDao 
 
             Long consultantId = resultSet.getLong("CONS_NEPH");
             if (!resultSet.wasNull()) {
-                Consultant consultant = utilityDao.getConsultant(consultantId);
-                demographics.setConsultant(consultant);
+                try {
+                    Consultant consultant = utilityDao.getConsultant(consultantId);
+                    demographics.setConsultant(consultant);
+                } catch (Exception e) {
+                    LOGGER.error("Unable to access consultant using consultantId {}", consultantId);
+                    e.printStackTrace();
+                }
             }
 
             Long renalUnitAuthorisedId = resultSet.getLong("RENAL_UNIT_2");
