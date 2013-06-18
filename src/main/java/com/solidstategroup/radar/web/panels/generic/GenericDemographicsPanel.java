@@ -16,14 +16,13 @@ import com.solidstategroup.radar.web.RadarApplication;
 import com.solidstategroup.radar.web.RadarSecuredSession;
 import com.solidstategroup.radar.web.components.CentreDropDown;
 import com.solidstategroup.radar.web.components.ComponentHelper;
-import com.solidstategroup.radar.web.components.ConsultantDropDown;
+import com.solidstategroup.radar.web.components.ClinicianDropDown;
 import com.solidstategroup.radar.web.components.RadarComponentFactory;
 import com.solidstategroup.radar.web.components.RadarFormComponentFeedbackIndicator;
 import com.solidstategroup.radar.web.components.RadarRequiredDateTextField;
 import com.solidstategroup.radar.web.components.RadarRequiredDropdownChoice;
 import com.solidstategroup.radar.web.components.RadarRequiredTextField;
 import com.solidstategroup.radar.web.components.RadarTextFieldWithValidation;
-import com.solidstategroup.radar.web.pages.content.ConsentFormsPage;
 import com.solidstategroup.radar.web.panels.PatientDetailPanel;
 import org.apache.wicket.Component;
 import org.apache.wicket.ajax.AjaxRequestTarget;
@@ -40,7 +39,7 @@ import org.apache.wicket.markup.html.form.Radio;
 import org.apache.wicket.markup.html.form.RadioGroup;
 import org.apache.wicket.markup.html.form.TextArea;
 import org.apache.wicket.markup.html.form.TextField;
-import org.apache.wicket.markup.html.link.BookmarkablePageLink;
+import org.apache.wicket.markup.html.link.ExternalLink;
 import org.apache.wicket.markup.html.panel.ComponentFeedbackPanel;
 import org.apache.wicket.markup.html.panel.Panel;
 import org.apache.wicket.model.CompoundPropertyModel;
@@ -357,12 +356,12 @@ public class GenericDemographicsPanel extends Panel {
 
 
         // Consultant and renal unit
-        final IModel<Long> centreNumber = new Model<Long>();
+        final IModel<String> centreNumber = new Model<String>();
         Centre renalUnitSelected = form.getModelObject().getRenalUnit();
-        centreNumber.setObject(renalUnitSelected != null ? renalUnitSelected.getId() : null);
+        centreNumber.setObject(renalUnitSelected != null ? renalUnitSelected.getUnitCode() : null);
 
-        final ConsultantDropDown consultant = new ConsultantDropDown("consultant", centreNumber);
-        form.add(consultant);
+        final ClinicianDropDown clinician = new ClinicianDropDown("clinician", centreNumber);
+        form.add(clinician);
 
         DropDownChoice<Centre> renalUnit;
 
@@ -377,12 +376,12 @@ public class GenericDemographicsPanel extends Panel {
                     Demographics demographics = model.getObject();
                     if (demographics != null) {
                         centreNumber.setObject(demographics.getRenalUnit() != null ?
-                                demographics.getRenalUnit().getId() :
+                                demographics.getRenalUnit().getUnitCode() :
                                 null);
                     }
 
-                    consultant.clearInput();
-                    target.add(consultant);
+                    clinician.clearInput();
+                    target.add(clinician);
                 }
             });
         } else {
@@ -397,8 +396,7 @@ public class GenericDemographicsPanel extends Panel {
         CheckBox consent = new CheckBox("consent");
         form.add(consent);
 
-        form.add(new BookmarkablePageLink("consentFormsLink", ConsentFormsPage.class));
-
+        form.add(new ExternalLink("consentFormsLink", "http://www.rarerenal.org/join/criteria-and-consent/"));
 
         // add generic fields
         TextField emailAddress = new TextField("emailAddress");
