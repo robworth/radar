@@ -403,7 +403,7 @@ public class DemographicsDaoImpl extends BaseDaoImpl implements DemographicsDao 
             demographics.setEmailAddress(resultSet.getString("emailAddress")); //emailAddress,
             demographics.setPhone1(resultSet.getString("phone1")); //phone1,
             demographics.setPhone2(resultSet.getString("phone2")); //phone2,
-            demographics.setMobile("mobile"); //mobile,
+            demographics.setMobile(resultSet.getString("mobile")); //mobile,
             Integer rrtModalityId = getIntegerWithNullCheck("RRT_modality", resultSet); //RRT_modality,
             if (rrtModalityId != null) {
                 demographics.setRrtModality(getEnumValue(Demographics.RRTModality.class, rrtModalityId));
