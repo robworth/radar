@@ -2,18 +2,15 @@ package com.solidstategroup.radar.web.panels.navigation;
 
 import com.solidstategroup.radar.model.user.User;
 import com.solidstategroup.radar.web.RadarSecuredSession;
-import com.solidstategroup.radar.web.pages.HomePage;
 import com.solidstategroup.radar.web.pages.ProfessionalsPage;
 import com.solidstategroup.radar.web.pages.RecruitmentPage;
 import com.solidstategroup.radar.web.pages.content.ConsentFormsPage;
 import com.solidstategroup.radar.web.pages.content.MpgnPage;
 import com.solidstategroup.radar.web.pages.content.SrnsPage;
-import com.solidstategroup.radar.web.pages.login.ProfessionalsLoginPage;
 import com.solidstategroup.radar.web.pages.patient.AddPatientPage;
 import com.solidstategroup.radar.web.pages.patient.ExistingPatientsListingPage;
 import com.solidstategroup.radar.web.pages.patient.srns.SrnsPatientPage;
 import com.solidstategroup.radar.web.pages.patient.srns.SrnsPatientPageReadOnly;
-import com.solidstategroup.radar.web.pages.regisration.ProfessionalRegistrationPage;
 import org.apache.wicket.MarkupContainer;
 import org.apache.wicket.markup.html.WebMarkupContainer;
 import org.apache.wicket.markup.html.link.BookmarkablePageLink;
@@ -55,13 +52,6 @@ public class DefaultNavigationPanel extends BaseNavigationPanel {
                 new BookmarkablePageLink<ConsentFormsPage>("consentFormsPageLink", ConsentFormsPage.class)
         );
         add(cliniciansContainer);
-
-        // only want to show on professional login page or homepage
-        BookmarkablePageLink professionalRegistrationPageLink = new BookmarkablePageLink<ProfessionalRegistrationPage>(
-                "professionalRegistrationPageLink", ProfessionalRegistrationPage.class);
-        professionalRegistrationPageLink.setVisible(pageClass == ProfessionalsLoginPage.class
-                || pageClass == HomePage.class);
-        add(professionalRegistrationPageLink);
 
         BookmarkablePageLink professionalsPageLink = new BookmarkablePageLink<ProfessionalsPage>(
                 "professionalsPageLink", ProfessionalsPage.class);
